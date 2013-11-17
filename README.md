@@ -45,9 +45,11 @@ Install the RHC client tools if you have not already done so:
 
 Create a python-2.7 application:
 
-    rhc app create -a myproject python-2.7 --no-git
+    rhc app create myproject python-2.7 --no-git
 
-Consider adding postgresql or mysql.
+Consider adding postgresql (or mysql) and making it scaling:
+
+    rhc app create myproject python-2.7 postgresql-9.2 --scaling --no-git
 
 Now got to the previously created django project:
 

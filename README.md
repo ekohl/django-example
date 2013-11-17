@@ -15,11 +15,11 @@ Creating the project
 --------------------
 
 We're going to make a project called myproject, based on the openshift project
-template. Note that we ask django-admin.py to render application and deploy as
-well. This is important because this file is called by OpenShift and by default
+template. Note that we ask django-admin.py to render application as well. This
+is important because this file is called by OpenShift and by default
 django-admin only renders .py files.
 
-    django-admin.py startproject -n application,deploy --template https://github.com/ekohl/django-project-openshift/archive/master.zip myproject
+    django-admin.py startproject -n application --template https://github.com/ekohl/django-project-openshift/archive/master.zip myproject
 
 Since startproject does not handle hidden directories, we need to move our
 openshift directory:

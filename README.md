@@ -1,27 +1,32 @@
 Django on OpenShift
 ===================
 
-This git repository helps you get up and running quickly w/ a Django
-installation on OpenShift.  The Django project name used in this repo
-is 'openshift' but you can feel free to change it.  Right now the
-backend is sqlite3 and the database runtime is found in
-`$OPENSHIFT_DATA_DIR/sqlite3.db`.
+This git repository s a Django project template that helps you get up and
+running quickly w/ a Django installation on OpenShift.
 
-Before you push this app for the first time, you will need to change
-the [Django admin password](#admin-user-name-and-password).
-Then, when you first push this
-application to the cloud instance, the sqlite database is copied from
-`wsgi/openshift/sqlite3.db` with your newly changed login
-credentials. Other than the password change, this is the stock
-database that is created when `python manage.py syncdb` is run with
-only the admin app installed.
+It configures your settings to autodetect the database type and does a syncdb
+on every deploy.
 
-On subsequent pushes, a `python manage.py syncdb` is executed to make
-sure that any models you added are created in the DB.  If you do
-anything that requires an alter table, you could add the alter
-statements in `GIT_ROOT/.openshift/action_hooks/alter.sql` and then use
-`GIT_ROOT/.openshift/action_hooks/deploy` to execute that script (make
-sure to back up your database w/ `rhc app snapshot save` first :) )
+Note that the [Django admin password](#admin-user-name-and-password) is set for
+you.
+
+
+Creating the project
+--------------------
+
+We're going to make a project called myproject, based on the openshift project
+template. Note that we ask django-admin to render application as well. This is
+important because this file is called by OpenShift and by default django-admin
+only renders .py files.
+
+    django-admin startproject -n application https://github.com/ekohl/django-project-openshift/archive/master.zip myproject
+
+Now we're going to commit it in git:
+
+    cd myproject
+    git init
+    git add .
+    git commit -m "Initial commit"
 
 
 Running on OpenShift
@@ -30,37 +35,110 @@ Running on OpenShift
 Create an account at http://openshift.redhat.com/
 
 Install the RHC client tools if you have not already done so:
-    
+
     sudo gem install rhc
 
-Create a python-2.6 application
+Create a python-2.6 application:
 
-    rhc app create -a django -t python-2.6
+    rhc app create -a myproject -t python-2.6 --no-git
 
-Add this upstream repo
+Consider adding postgresql or mysql.
 
-    cd django
-    git remote add upstream -m master git://github.com/openshift/django-example.git
-    git pull -s recursive -X theirs upstream master
+Now got to the previously created django project:
 
-Then push the repo upstream
+    cd myproject
 
-    git push
+Because we skipped the git clone, we need to manually add our remote. Look for
+Git URL:
 
-Here, the [admin user name and password will be displayed](#admin-user-name-and-password), so pay
-special attention.
-	
+    rhc show-app myproject
+
+Or we can automate it:
+
+    GIT_URL=`rhc show-app django | awk '/Git URL/ { print $3 }'`
+
+Add it as a remote named openshift:
+
+    git remote add openshift $GIT_URL
+
+Then we need to force push it to replace the history. We will also set the
+upstream so git will track the remote branch:
+
+    git push --force --set-upstream openshift HEAD
+
+*Important*: Remember that --force is a *dangerous* option and will overwrite your
+remote branch. Unless you know what you're doing, you should never use it on an
+existing application. Now that everything is set up, you can use rhc git-clone
+instead.
+
+Now the [admin user name and password](#admin-user-name-and-password) will be
+displayed, so pay special attention.
+
 That's it. You can now checkout your application at:
 
-    http://django-$yournamespace.rhcloud.com
+    http://myproject-$yournamespace.rhcloud.com
+
 
 Admin user name and password
 ----------------------------
-As the `git push` output scrolls by, keep an eye out for a
-line of output that starts with `Django application credentials: `. This line
-contains the generated admin password that you will need to begin
-administering your Django app. This is the only time the password
-will be displayed, so be sure to save it somewhere. You might want 
-to pipe the output of the git push to a text file so you can grep for
-the password later.
+As the `git push` output scrolls by, keep an eye out for a line of output that
+starts with `Django application credentials: `. This line contains the
+generated admin password that you will need to begin administering your Django
+app. This is the only time the password will be displayed, so be sure to save
+it somewhere. You might want to pipe the output of the git push to a text file
+so you can grep for the password later.
 
+
+Repo layout
+-----------
+wsgi/ - Externally exposed wsgi code goes
+wsgi/static/ - Public static content gets served here
+libs/ - Additional libraries
+data/ - For not-externally exposed wsgi code
+setup.py - Standard setup.py, specify deps here
+../data - For persistent data (also env var: OPENSHIFT\_DATA\_DIR)
+.openshift/action\_hooks/pre\_build - Script that gets run every git push before the build
+.openshift/action\_hooks/build - Script that gets run every git push as part of the build process (on the CI system if available)
+.openshift/action\_hooks/deploy - Script that gets run every git push after build but before the app is restarted
+.openshift/action\_hooks/post\_deploy - Script that gets run every git push after the app is restarted
+
+
+Environment Variables
+---------------------
+
+OpenShift provides several environment variables to reference for ease
+of use. The following list are some common variables but far from exhaustive:
+
+    os.environ['OPENSHIFT_APP_NAME']  - Application name
+    os.environ['OPENSHIFT_DATA_DIR']  - For persistent storage (between pushes)
+    os.environ['OPENSHIFT_TMP_DIR']   - Temp storage (unmodified files deleted after 10 days)
+
+When embedding a database using 'rhc cartridge add', you can reference environment
+variables for username, host and password:
+
+If you embed MySQL, then:
+
+    os.environ['OPENSHIFT_MYSQL_DB_HOST']      - DB host
+    os.environ['OPENSHIFT_MYSQL_DB_PORT']      - DB Port
+    os.environ['OPENSHIFT_MYSQL_DB_USERNAME']  - DB Username
+    os.environ['OPENSHIFT_MYSQL_DB_PASSWORD']  - DB Password
+
+To get a full list of environment variables, simply add a line in your
+.openshift/action\_hooks/build script that says "export" and push.
+
+
+Notes about layout
+------------------
+Please leave wsgi, libs and data directories but feel free to create additional
+directories if needed.
+
+Note: Every time you push, everything in your remote repo dir gets recreated
+please store long term items (like an sqlite database) in ../data which will
+persist between pushes of your repo.
+
+
+Notes about setup.py
+--------------------
+
+Adding deps to the install\_requires will have the openshift server actually
+install those deps at git push time.

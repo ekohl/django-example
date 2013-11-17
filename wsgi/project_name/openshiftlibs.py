@@ -5,12 +5,15 @@ import os
 import random
 import sys
 
+from django.core.exceptions import ImproperlyConfigured
+
 
 # See https://www.openshift.com/page/openshift-environment-variables
 
 
 ON_OPENSHIFT = 'OPENSHIFT_APP_NAME' in os.environ
 
+# TODO: On python 2.7+ an OrderedDict would be better
 DATABASE_ENGINES = (
         ('POSTGRESQL', 'django.db.backends.postgresql_psycopg2'),
         ('MYSQL', 'django.db.backends.mysql'),
@@ -92,7 +95,31 @@ def openshift_secure(default_keys, secure_function=make_secure_key):
     return my_list
 
 
-def get_database_config():
+def get_database_config(database_server, engine=None):
+    prefix = 'OPENSHIFT_' + database_server + '_DB_'
+
+    if prefix + 'URL' not in os.environ:
+        raise ImproperlyConfigured('Database server %s is not configured' %
+                database_server)
+
+    if not engine:
+        try:
+            engine = dict(DATABASE_ENGINES)[database_server]
+        except KeyError:
+            raise ValueError('No engine passed in for unknown server %s' %
+                    database_server)
+
+    return {
+        'ENGINE': engine,
+        'NAME': os.environ['OPENSHIFT_APP_NAME'],
+        'USER': os.environ[prefix + 'USERNAME'],
+        'PASSWORD': os.environ[prefix + 'PASSWORD'],
+        'HOST': os.environ[prefix + 'HOST'],
+        'PORT': os.environ[prefix + 'PORT'],
+    }
+
+
+def get_databases_config():
     """
     Get the database configuration.
 

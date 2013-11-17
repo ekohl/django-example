@@ -6,6 +6,17 @@ import random
 import sys
 
 
+# See https://www.openshift.com/page/openshift-environment-variables
+
+
+ON_OPENSHIFT = 'OPENSHIFT_APP_NAME' in os.environ
+
+DATABASE_ENGINES = (
+        ('POSTGRESQL', 'django.db.backends.postgresql_psycopg2'),
+        ('MYSQL', 'django.db.backends.mysql'),
+)
+
+
 # Gets the secret token provided by OpenShift
 # or generates one (this is slightly less secure, but good enough for now)
 def get_openshift_secret_token():
@@ -79,3 +90,46 @@ def openshift_secure(default_keys, secure_function=make_secure_key):
         sys.stderr.write("OPENSHIFT WARNING: Using default values for secure variables, please manually modify in " + calling_file + "\n")
 
     return my_list
+
+
+def get_database_config():
+    """
+    Get the database configuration.
+
+    To do this, it iterates DATABASE_ENGINES and uses the first one where
+    OPENSHIFT_key_DB_URL is found in the environment. If none is found, sqlite3
+    is used.
+    """
+
+    # https://docs.djangoproject.com/en/dev/ref/settings/#databases
+    # https://www.openshift.com/page/openshift-environment-variables#Database
+
+    for database, engine in DATABASE_ENGINES:
+        prefix = 'OPENSHIFT_' + database + '_DB_'
+        if prefix + 'URL' in os.environ:
+            default = {
+                'ENGINE': engine,
+                'NAME': os.environ['OPENSHIFT_APP_NAME'],
+                'USER': os.environ[prefix + 'USERNAME'],
+                'PASSWORD': os.environ[prefix + 'PASSWORD'],
+                'HOST': os.environ[prefix + 'HOST'],
+                'PORT': os.environ[prefix + 'PORT'],
+            }
+            break
+    else:
+        default = {
+                'ENGINE': 'django.db.backends.sqlite3',
+                'NAME': os.path.join(os.environ['OPENSHIFT_DATA_DIR'],
+                    'sqlite3.db'),
+        }
+
+    return {'default': default}
+
+
+def get_secret_key(default):
+    """
+    Return a secret key.
+
+    See https://docs.djangoproject.com/en/dev/ref/settings/#secret-key
+    """
+    return openshift_secure({'SECRET_KEY': default})['SECRET_KEY']

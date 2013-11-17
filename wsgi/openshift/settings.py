@@ -1,17 +1,15 @@
 # -*- coding: utf-8 -*-
 # Django settings for openshift project.
-import imp, os
-
-# a setting to determine whether we are running on OpenShift
-ON_OPENSHIFT = False
-if os.environ.has_key('OPENSHIFT_REPO_DIR'):
-    ON_OPENSHIFT = True
+import os
 
 PROJECT_DIR = os.path.dirname(os.path.realpath(__file__))
+
+# a setting to determine whether we are running on OpenShift
+ON_OPENSHIFT = 'OPENSHIFT_APP_NAME' in os.environ
 if ON_OPENSHIFT:
-    DEBUG = False
-else:
-    DEBUG = True
+    import openshiftlibs
+
+DEBUG = not ON_OPENSHIFT
 TEMPLATE_DEBUG = DEBUG
 
 ADMINS = (
@@ -20,22 +18,11 @@ ADMINS = (
 MANAGERS = ADMINS
 
 if ON_OPENSHIFT:
-    # os.environ['OPENSHIFT_MYSQL_DB_*'] variables can be used with databases created
-    # with rhc cartridge add (see /README in this git repo)
-    DATABASES = {
-        'default': {
-            'ENGINE': 'django.db.backends.sqlite3',  # Add 'postgresql_psycopg2', 'postgresql', 'mysql', 'sqlite3' or 'oracle'.
-            'NAME': os.path.join(os.environ['OPENSHIFT_DATA_DIR'], 'sqlite3.db'),  # Or path to database file if using sqlite3.
-            'USER': '',                      # Not used with sqlite3.
-            'PASSWORD': '',                  # Not used with sqlite3.
-            'HOST': '',                      # Set to empty string for localhost. Not used with sqlite3.
-            'PORT': '',                      # Set to empty string for default. Not used with sqlite3.
-        }
-    }
+    DATABASES = openshiftlibs.get_database_config()
 else:
     DATABASES = {
         'default': {
-            'ENGINE': 'django.db.backends.sqlite3',  # Add 'postgresql_psycopg2', 'postgresql', 'mysql', 'sqlite3' or 'oracle'.
+            'ENGINE': 'django.db.backends.sqlite3',  # Choose 'postgresql_psycopg2', 'postgresql', 'mysql', 'sqlite3' or 'oracle'.
             'NAME': os.path.join(PROJECT_DIR, 'sqlite3.db'),  # Or path to database file if using sqlite3.
             'USER': '',                      # Not used with sqlite3.
             'PASSWORD': '',                  # Not used with sqlite3.
@@ -106,18 +93,10 @@ STATICFILES_FINDERS = (
     #'django.contrib.staticfiles.finders.DefaultStorageFinder',
 )
 
-# Make a dictionary of default keys
-default_keys = { 'SECRET_KEY': 'vm4rl5*ymb@2&d_(gc$gb-^twq9w(u69hi--%$5xrh!xk(t%hw' }
-
-# Replace default keys with dynamic values if we are in OpenShift
-use_keys = default_keys
-if ON_OPENSHIFT:
-    imp.find_module('openshiftlibs')
-    import openshiftlibs
-    use_keys = openshiftlibs.openshift_secure(default_keys)
-
 # Make this unique, and don't share it with anybody.
-SECRET_KEY = use_keys['SECRET_KEY']
+SECRET_KEY = 'vm4rl5*ymb@2&d_(gc$gb-^twq9w(u69hi--%$5xrh!xk(t%hw'
+if ON_OPENSHIFT:
+    SECRET_KEY = openshiftlibs.get_secret_key(SECRET_KEY)
 
 # List of callables that know how to import templates from various sources.
 TEMPLATE_LOADERS = (

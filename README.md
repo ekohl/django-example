@@ -15,15 +15,20 @@ Creating the project
 --------------------
 
 We're going to make a project called myproject, based on the openshift project
-template. Note that we ask django-admin to render application as well. This is
-important because this file is called by OpenShift and by default django-admin
-only renders .py files.
+template. Note that we ask django-admin.py to render application and deploy as
+well. This is important because this file is called by OpenShift and by default
+django-admin only renders .py files.
 
-    django-admin startproject -n application https://github.com/ekohl/django-project-openshift/archive/master.zip myproject
+    django-admin.py startproject -n application,deploy --template https://github.com/ekohl/django-project-openshift/archive/master.zip myproject
+
+Since startproject does not handle hidden directories, we need to move our
+openshift directory:
+
+    cd myproject
+    mv openshift .openshift
 
 Now we're going to commit it in git:
 
-    cd myproject
     git init
     git add .
     git commit -m "Initial commit"
@@ -55,7 +60,7 @@ Git URL:
 
 Or we can automate it:
 
-    GIT_URL=`rhc show-app django | awk '/Git URL/ { print $3 }'`
+    GIT_URL=`rhc show-app myproject | awk '/Git URL/ { print $3 }'`
 
 Add it as a remote named openshift:
 

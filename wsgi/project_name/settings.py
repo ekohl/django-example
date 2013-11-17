@@ -85,8 +85,13 @@ STATIC_URL = '/static/'
 ON_OPENSHIFT = 'OPENSHIFT_APP_NAME' in os.environ
 
 if ON_OPENSHIFT:
-    import {{ project_name }}.openshiftlibs
+    import openshiftlibs
+    import socket
     DEBUG = False
     TEMPLATE_DEBUG = DEBUG
+    ALLOWED_HOSTS = [os.environ['OPENSHIFT_APP_DNS'], socket.gethostname()]
     DATABASES = openshiftlibs.get_databases_config()
     SECRET_KEY = openshiftlibs.get_secret_key(SECRET_KEY)
+    MEDIA_ROOT = os.path.join(os.environ['OPENSHIFT_DATA_DIR'], 'media')
+    STATIC_ROOT = os.path.join(os.environ['OPENSHIFT_REPO_DIR'], 'wsgi',
+            'static')

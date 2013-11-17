@@ -43,9 +43,9 @@ Install the RHC client tools if you have not already done so:
 
     sudo gem install rhc
 
-Create a python-2.6 application:
+Create a python-2.7 application:
 
-    rhc app create -a myproject -t python-2.6 --no-git
+    rhc app create -a myproject python-2.7 --no-git
 
 Consider adding postgresql or mysql.
 

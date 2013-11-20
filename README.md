@@ -45,11 +45,11 @@ Install the RHC client tools if you have not already done so:
 
 Create a python-2.7 application:
 
-    rhc app create myproject python-2.7 --no-git
+    rhc app create myproject python-2.7 --from-code empty --no-git
 
 Consider adding postgresql (or mysql) and making it scaling:
 
-    rhc app create myproject python-2.7 postgresql-9.2 --scaling --no-git
+    rhc app create myproject python-2.7 postgresql-9.2 --scaling --from-code empty --no-git
 
 Now got to the previously created django project:
 
@@ -68,15 +68,10 @@ Add it as a remote named openshift:
 
     git remote add openshift $GIT_URL
 
-Then we need to force push it to replace the history. We will also set the
-upstream so git will track the remote branch:
+Then we push it to deploy the application. We will also set the upstream so git
+will [track the remote branch](http://git-scm.com/book/en/Git-Branching-Remote-Branches#Tracking-Branches):
 
-    git push --force --set-upstream openshift HEAD
-
-*Important*: Remember that --force is a *dangerous* option and will overwrite your
-remote branch. Unless you know what you're doing, you should never use it on an
-existing application. Now that everything is set up, you can use rhc git-clone
-instead.
+    git push --set-upstream openshift HEAD
 
 Now the [admin user name and password](#admin-user-name-and-password) will be
 displayed, so pay special attention.
